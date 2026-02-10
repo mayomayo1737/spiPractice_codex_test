@@ -291,12 +291,14 @@ def run_gui() -> None:
     choice_frame.pack(fill="x")
     choice_buttons: list[ttk.Radiobutton] = []
 
-    feedback = tk.Text(qa_card, height=7, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
-    feedback.pack(fill="both", expand=True, pady=8)
+    feedback = tk.Text(qa_card, height=5, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
+    feedback.pack(fill="x", pady=8)
     feedback.configure(state="disabled")
 
-    next_btn = ttk.Button(qa_card, text="回答する", style="Primary.TButton")
-    next_btn.pack(anchor="e")
+    action_bar = ttk.Frame(shell, style="Card.TFrame", padding=10)
+    action_bar.pack(fill="x", pady=(6, 0))
+    next_btn = ttk.Button(action_bar, text="回答する", style="Primary.TButton")
+    next_btn.pack(fill="x")
 
     state = {
         "mode": "非言語",
@@ -400,8 +402,39 @@ def run_gui() -> None:
             root.after_cancel(state["timer_id"])
             state["timer_id"] = None
 
+    def score_selected_option(selected: int, timed_out: bool = False) -> None:
+        q = state["quiz"][state["index"]]
+        if state["mode"] == "性格":
+            score = len(q["choices"]) - selected
+            state["records"].append((q.get("trait", "その他"), score))
+            state["index"] += 1
+            show_question()
+            return
+
+        is_correct = selected == q["answer_index"]
+        if is_correct:
+            state["correct"] += 1
+
+        prefix = ""
+        if timed_out:
+            prefix = "⏰ 時間切れ（選択中の回答で判定）\n"
+
+        write_feedback(
+            prefix
+            + ("✅ 正解！\n" if is_correct else "❌ 不正解。\n")
+            + f"正解: {q['answer_index'] + 1}. {q['choices'][q['answer_index']]}\n\n解説:\n{q['explanation']}"
+        )
+        state["index"] += 1
+        next_btn.config(text="次へ")
+        refresh_progress()
+
     def handle_timeout() -> None:
         stop_timer()
+        selected = choice_var.get()
+        if selected >= 0:
+            score_selected_option(selected, timed_out=True)
+            return
+
         q = state["quiz"][state["index"]]
         if state["mode"] == "性格":
             state["index"] += 1
@@ -430,24 +463,7 @@ def run_gui() -> None:
             return
 
         stop_timer()
-        q = state["quiz"][state["index"]]
-        if state["mode"] == "性格":
-            score = len(q["choices"]) - selected
-            state["records"].append((q.get("trait", "その他"), score))
-            state["index"] += 1
-            show_question()
-            return
-
-        is_correct = selected == q["answer_index"]
-        if is_correct:
-            state["correct"] += 1
-        write_feedback(
-            ("✅ 正解！\n" if is_correct else "❌ 不正解。\n")
-            + f"正解: {q['answer_index'] + 1}. {q['choices'][q['answer_index']]}\n\n解説:\n{q['explanation']}"
-        )
-        state["index"] += 1
-        next_btn.config(text="次へ")
-        refresh_progress()
+        score_selected_option(selected)
 
     def finish_quiz() -> None:
         stop_timer()
