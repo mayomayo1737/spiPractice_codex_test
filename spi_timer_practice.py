@@ -10,11 +10,24 @@ from collections import defaultdict
 from pathlib import Path
 
 QUESTION_FILE = Path(__file__).with_name("questions.json")
-TIME_LIMITS = {"非言語": 30, "言語": 40, "性格": None}
+TIME_LIMITS_BY_MODE_DIFFICULTY = {
+    "非言語": {"standard": 20, "hard": 30},
+    "言語": {"standard": 30, "hard": 40},
+    "性格": {"standard": None, "hard": None},
+}
 
 
 class QuizError(Exception):
     """クイズ設定時のエラー。"""
+
+
+def get_time_limit(mode: str, difficulty: str) -> int | None:
+    mode_limits = TIME_LIMITS_BY_MODE_DIFFICULTY.get(mode, {})
+    if difficulty in mode_limits:
+        return mode_limits[difficulty]
+    # difficulty未指定/未知の場合はモード内の最大値を採用
+    vals = [v for v in mode_limits.values() if v is not None]
+    return max(vals) if vals else None
 
 
 def timed_input(prompt: str, timeout: int | None) -> str | None:
@@ -84,7 +97,7 @@ def ask_question(question: dict, index: int, total: int, mode: str) -> tuple[boo
     for i, choice in enumerate(question["choices"], start=1):
         print(f"  {i}. {choice}")
 
-    timeout = TIME_LIMITS[mode]
+    timeout = get_time_limit(mode, question.get("difficulty", "standard"))
     if timeout is not None:
         print(f"\n制限時間は{timeout}秒です。")
     answer = timed_input("番号で回答してください > ", timeout)
@@ -376,7 +389,7 @@ def run_gui() -> None:
             rb.pack(anchor="w", pady=1)
             choice_buttons.append(rb)
 
-        timeout = TIME_LIMITS[state["mode"]]
+        timeout = get_time_limit(state["mode"], q.get("difficulty", "standard"))
         if timeout is None:
             state["remaining"] = None
             state["timer_total"] = None
