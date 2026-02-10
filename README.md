@@ -26,7 +26,9 @@ SPI対策のための、**タイマー付き・解説付き**練習問題アプ�
 ## 使い方
 
 ```bash
-python3 spi_timer_practice.py
+cd C:\Users\81901\spiPractice_codex_test
+git pull origin main
+python spi_timer_practice.py
 ```
 
 起動後に以下を選択します。
