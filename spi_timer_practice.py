@@ -233,7 +233,7 @@ def run_gui() -> None:
     random_var = tk.BooleanVar(value=True)
 
     shell = ttk.Frame(root, style="Card.TFrame", padding=8)
-    shell.pack(fill="both", expand=True, padx=8, pady=8)
+    shell.pack(fill="both", expand=True, padx=8, pady=(8, 0))
 
     header = ttk.Frame(shell, style="Card.TFrame", padding=10)
     header.pack(fill="x", pady=(0, 6))
@@ -295,9 +295,9 @@ def run_gui() -> None:
     feedback.pack(fill="x", pady=8)
     feedback.configure(state="disabled")
 
-    action_bar = ttk.Frame(shell, style="Card.TFrame", padding=10)
-    action_bar.pack(fill="x", pady=(6, 0))
-    next_btn = ttk.Button(action_bar, text="回答する", style="Primary.TButton")
+    action_bar = ttk.Frame(root, style="Card.TFrame", padding=10)
+    action_bar.pack(side="bottom", fill="x", padx=8, pady=(6, 8))
+    next_btn = ttk.Button(action_bar, text="解答する", style="Primary.TButton")
     next_btn.pack(fill="x")
 
     state = {
@@ -449,7 +449,7 @@ def run_gui() -> None:
 
     def submit_answer() -> None:
         if next_btn.cget("text") == "次へ":
-            next_btn.config(text="回答する")
+            next_btn.config(text="解答する")
             show_question()
             return
 
@@ -479,7 +479,7 @@ def run_gui() -> None:
         write_prompt("おつかれさまでした。")
         write_feedback(summary)
         timer_label.config(text="")
-        next_btn.config(text="回答する")
+        next_btn.config(text="解答する")
 
     def start_quiz() -> None:
         mode = mode_var.get()
@@ -508,7 +508,7 @@ def run_gui() -> None:
         state["index"] = 0
         state["correct"] = 0
         state["records"] = []
-        next_btn.config(text="回答する")
+        next_btn.config(text="解答する")
         show_question()
 
     mode_combo.bind("<<ComboboxSelected>>", update_filters)
