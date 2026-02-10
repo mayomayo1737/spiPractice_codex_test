@@ -232,6 +232,11 @@ def run_gui() -> None:
     count_var = tk.StringVar(value="20")
     random_var = tk.BooleanVar(value=True)
 
+    action_bar = ttk.Frame(root, style="Card.TFrame", padding=10)
+    action_bar.pack(side="bottom", fill="x", padx=8, pady=(6, 8))
+    next_btn = ttk.Button(action_bar, text="解答する", style="Primary.TButton")
+    next_btn.pack(fill="x")
+
     shell = ttk.Frame(root, style="Card.TFrame", padding=8)
     shell.pack(fill="both", expand=True, padx=8, pady=(8, 0))
 
@@ -294,11 +299,6 @@ def run_gui() -> None:
     feedback = tk.Text(qa_card, height=5, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
     feedback.pack(fill="x", pady=8)
     feedback.configure(state="disabled")
-
-    action_bar = ttk.Frame(root, style="Card.TFrame", padding=10)
-    action_bar.pack(side="bottom", fill="x", padx=8, pady=(6, 8))
-    next_btn = ttk.Button(action_bar, text="解答する", style="Primary.TButton")
-    next_btn.pack(fill="x")
 
     state = {
         "mode": "非言語",
