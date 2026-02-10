@@ -221,7 +221,7 @@ def run_gui() -> None:
     style.configure("Header.TLabel", background="#2f5fff", foreground="#ffffff", font=("Arial", 12, "bold"))
     style.configure("Sub.TLabel", background="#ffffff", foreground="#1f2a44")
     style.configure("Primary.TButton", font=("Arial", 10, "bold"))
-    style.configure("Quiz.TProgressbar", troughcolor="#ecf0f8", background="#5d84ff", thickness=10)
+    style.configure("Quiz.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#5d84ff", thickness=10)
     style.configure("TimerGreen.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#31c46c", thickness=14)
     style.configure("TimerYellow.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#f4bf2a", thickness=14)
     style.configure("TimerRed.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#ef5454", thickness=14)
@@ -266,7 +266,7 @@ def run_gui() -> None:
     info_bar.pack(fill="x", pady=(0, 6))
     ttk.Label(info_bar, text="進捗", style="Sub.TLabel").pack(anchor="w")
     progress_var = tk.DoubleVar(value=0)
-    progress = ttk.Progressbar(info_bar, variable=progress_var, maximum=100, style="Quiz.TProgressbar")
+    progress = ttk.Progressbar(info_bar, variable=progress_var, maximum=100, style="Quiz.Horizontal.TProgressbar")
     progress.pack(fill="x", pady=(2, 6))
 
     ttk.Label(info_bar, text="タイムリミット", style="Sub.TLabel").pack(anchor="w")
