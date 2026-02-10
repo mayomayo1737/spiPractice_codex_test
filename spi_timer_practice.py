@@ -211,8 +211,9 @@ def run_gui() -> None:
     questions = load_questions()
     root = tk.Tk()
     root.title("SPI練習アプリ")
-    root.geometry("980x760")
-    root.configure(bg="#f3f7ff")
+    root.geometry("420x860")
+    root.minsize(390, 780)
+    root.configure(bg="#e9f0ff")
 
     style = ttk.Style(root)
     style.theme_use("clam")
@@ -220,6 +221,10 @@ def run_gui() -> None:
     style.configure("Header.TLabel", background="#2f5fff", foreground="#ffffff", font=("Arial", 12, "bold"))
     style.configure("Sub.TLabel", background="#ffffff", foreground="#1f2a44")
     style.configure("Primary.TButton", font=("Arial", 10, "bold"))
+    style.configure("Quiz.TProgressbar", troughcolor="#ecf0f8", background="#5d84ff", thickness=10)
+    style.configure("TimerGreen.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#31c46c", thickness=14)
+    style.configure("TimerYellow.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#f4bf2a", thickness=14)
+    style.configure("TimerRed.Horizontal.TProgressbar", troughcolor="#ecf0f8", background="#ef5454", thickness=14)
 
     mode_var = tk.StringVar(value="非言語")
     category_var = tk.StringVar(value="すべて")
@@ -227,49 +232,58 @@ def run_gui() -> None:
     count_var = tk.StringVar(value="20")
     random_var = tk.BooleanVar(value=True)
 
-    header = ttk.Frame(root, style="Card.TFrame", padding=12)
-    header.pack(fill="x", padx=14, pady=(14, 8))
-    ttk.Label(header, text="SPI Practice App", style="Header.TLabel", anchor="center", padding=8).pack(fill="x")
-    ttk.Label(header, text="モード・分野・難易度を選んで、アプリ感覚でポチポチ解けます。", style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
+    shell = ttk.Frame(root, style="Card.TFrame", padding=8)
+    shell.pack(fill="both", expand=True, padx=8, pady=8)
 
-    control = ttk.Frame(root, style="Card.TFrame", padding=12)
-    control.pack(fill="x", padx=14, pady=8)
+    header = ttk.Frame(shell, style="Card.TFrame", padding=10)
+    header.pack(fill="x", pady=(0, 6))
+    ttk.Label(header, text="SPI Practice", style="Header.TLabel", anchor="center", padding=7).pack(fill="x")
+    ttk.Label(header, text="スマホ比率UI / タップ感覚で解答", style="Sub.TLabel").pack(anchor="w", pady=(7, 0))
+
+    control = ttk.Frame(shell, style="Card.TFrame", padding=10)
+    control.pack(fill="x", pady=(0, 6))
 
     ttk.Label(control, text="モード", style="Sub.TLabel").grid(row=0, column=0, sticky="w")
     mode_combo = ttk.Combobox(control, textvariable=mode_var, values=["非言語", "言語", "性格"], state="readonly", width=12)
-    mode_combo.grid(row=1, column=0, padx=(0, 10), pady=(2, 0), sticky="w")
+    mode_combo.grid(row=1, column=0, padx=(0, 6), pady=(2, 0), sticky="w")
 
     ttk.Label(control, text="分野", style="Sub.TLabel").grid(row=0, column=1, sticky="w")
-    category_combo = ttk.Combobox(control, textvariable=category_var, state="readonly", width=18)
-    category_combo.grid(row=1, column=1, padx=(0, 10), pady=(2, 0), sticky="w")
+    category_combo = ttk.Combobox(control, textvariable=category_var, state="readonly", width=14)
+    category_combo.grid(row=1, column=1, padx=(0, 6), pady=(2, 0), sticky="w")
 
-    ttk.Label(control, text="難易度", style="Sub.TLabel").grid(row=0, column=2, sticky="w")
+    ttk.Label(control, text="難易度", style="Sub.TLabel").grid(row=2, column=0, sticky="w", pady=(8, 0))
     difficulty_combo = ttk.Combobox(control, textvariable=difficulty_var, state="readonly", width=12)
-    difficulty_combo.grid(row=1, column=2, padx=(0, 10), pady=(2, 0), sticky="w")
+    difficulty_combo.grid(row=3, column=0, padx=(0, 6), pady=(2, 0), sticky="w")
 
-    ttk.Label(control, text="出題数", style="Sub.TLabel").grid(row=0, column=3, sticky="w")
-    ttk.Entry(control, textvariable=count_var, width=6).grid(row=1, column=3, padx=(0, 10), pady=(2, 0), sticky="w")
+    ttk.Label(control, text="出題数", style="Sub.TLabel").grid(row=2, column=1, sticky="w", pady=(8, 0))
+    ttk.Entry(control, textvariable=count_var, width=8).grid(row=3, column=1, padx=(0, 6), pady=(2, 0), sticky="w")
 
-    ttk.Checkbutton(control, text="ランダム出題", variable=random_var).grid(row=1, column=4, padx=(0, 10), sticky="w")
+    ttk.Checkbutton(control, text="ランダム出題", variable=random_var).grid(row=4, column=0, columnspan=2, pady=(8, 0), sticky="w")
     start_btn = ttk.Button(control, text="開始", style="Primary.TButton")
-    start_btn.grid(row=1, column=5, padx=(4, 0), sticky="e")
+    start_btn.grid(row=5, column=1, pady=(8, 0), sticky="e")
 
-    info_bar = ttk.Frame(root, style="Card.TFrame", padding=12)
-    info_bar.pack(fill="x", padx=14, pady=(0, 8))
+    info_bar = ttk.Frame(shell, style="Card.TFrame", padding=10)
+    info_bar.pack(fill="x", pady=(0, 6))
+    ttk.Label(info_bar, text="進捗", style="Sub.TLabel").pack(anchor="w")
     progress_var = tk.DoubleVar(value=0)
-    progress = ttk.Progressbar(info_bar, variable=progress_var, maximum=100)
-    progress.pack(fill="x")
-    timer_label = ttk.Label(info_bar, text="", style="Sub.TLabel", font=("Arial", 11, "bold"))
-    timer_label.pack(anchor="e", pady=(6, 0))
+    progress = ttk.Progressbar(info_bar, variable=progress_var, maximum=100, style="Quiz.TProgressbar")
+    progress.pack(fill="x", pady=(2, 6))
 
-    qa_card = ttk.Frame(root, style="Card.TFrame", padding=12)
-    qa_card.pack(fill="both", expand=True, padx=14, pady=(0, 10))
+    ttk.Label(info_bar, text="タイムリミット", style="Sub.TLabel").pack(anchor="w")
+    timer_bar_var = tk.DoubleVar(value=100)
+    timer_bar = ttk.Progressbar(info_bar, variable=timer_bar_var, maximum=100, style="TimerGreen.Horizontal.TProgressbar")
+    timer_bar.pack(fill="x", pady=(2, 4))
+    timer_label = ttk.Label(info_bar, text="", style="Sub.TLabel", font=("Arial", 10, "bold"))
+    timer_label.pack(anchor="e")
 
-    q_title = ttk.Label(qa_card, text="設定を選んで『開始』を押してください", style="Sub.TLabel", font=("Arial", 12, "bold"))
+    qa_card = ttk.Frame(shell, style="Card.TFrame", padding=10)
+    qa_card.pack(fill="both", expand=True)
+
+    q_title = ttk.Label(qa_card, text="設定を選んで『開始』を押してください", style="Sub.TLabel", font=("Arial", 11, "bold"))
     q_title.pack(anchor="w")
 
-    q_prompt = tk.Text(qa_card, height=9, wrap="word", font=("Arial", 11), bg="#f9fbff", relief="flat")
-    q_prompt.pack(fill="x", pady=8)
+    q_prompt = tk.Text(qa_card, height=8, wrap="word", font=("Arial", 10), bg="#f9fbff", relief="flat")
+    q_prompt.pack(fill="x", pady=6)
     q_prompt.configure(state="disabled")
 
     choice_var = tk.IntVar(value=-1)
@@ -277,8 +291,8 @@ def run_gui() -> None:
     choice_frame.pack(fill="x")
     choice_buttons: list[ttk.Radiobutton] = []
 
-    feedback = tk.Text(qa_card, height=8, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
-    feedback.pack(fill="both", expand=True, pady=10)
+    feedback = tk.Text(qa_card, height=7, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
+    feedback.pack(fill="both", expand=True, pady=8)
     feedback.configure(state="disabled")
 
     next_btn = ttk.Button(qa_card, text="回答する", style="Primary.TButton")
@@ -292,6 +306,7 @@ def run_gui() -> None:
         "records": [],
         "timer_id": None,
         "remaining": None,
+        "timer_total": None,
     }
 
     def update_filters(*_: object) -> None:
@@ -324,6 +339,23 @@ def run_gui() -> None:
         total = max(len(state["quiz"]), 1)
         progress_var.set((state["index"] / total) * 100)
 
+    def update_timer_visual() -> None:
+        if state["timer_total"] is None or state["remaining"] is None:
+            timer_bar_var.set(100)
+            timer_bar.configure(style="TimerGreen.Horizontal.TProgressbar")
+            timer_label.config(text="制限時間: なし")
+            return
+
+        ratio = max(state["remaining"] / state["timer_total"], 0)
+        timer_bar_var.set(ratio * 100)
+        if ratio > 0.50:
+            timer_bar.configure(style="TimerGreen.Horizontal.TProgressbar")
+        elif ratio > 0.25:
+            timer_bar.configure(style="TimerYellow.Horizontal.TProgressbar")
+        else:
+            timer_bar.configure(style="TimerRed.Horizontal.TProgressbar")
+        timer_label.config(text=f"残り時間: {state['remaining']}秒")
+
     def show_question() -> None:
         if state["index"] >= len(state["quiz"]):
             finish_quiz()
@@ -339,25 +371,28 @@ def run_gui() -> None:
 
         for i, c in enumerate(q["choices"]):
             rb = ttk.Radiobutton(choice_frame, text=f"{i + 1}. {c}", value=i, variable=choice_var)
-            rb.pack(anchor="w", pady=2)
+            rb.pack(anchor="w", pady=1)
             choice_buttons.append(rb)
 
         timeout = TIME_LIMITS[state["mode"]]
         if timeout is None:
-            timer_label.config(text="制限時間: なし")
             state["remaining"] = None
+            state["timer_total"] = None
+            update_timer_visual()
         else:
             state["remaining"] = timeout
+            state["timer_total"] = timeout
+            update_timer_visual()
             tick_timer()
 
     def tick_timer() -> None:
         if state["remaining"] is None:
             return
-        timer_label.config(text=f"残り時間: {state['remaining']}秒")
         if state["remaining"] <= 0:
             handle_timeout()
             return
         state["remaining"] -= 1
+        update_timer_visual()
         state["timer_id"] = root.after(1000, tick_timer)
 
     def stop_timer() -> None:
@@ -418,6 +453,8 @@ def run_gui() -> None:
         stop_timer()
         total = len(state["quiz"])
         progress_var.set(100)
+        timer_bar_var.set(0)
+        timer_bar.configure(style="TimerRed.Horizontal.TProgressbar")
         if state["mode"] == "性格":
             summary = summarize_personality(state["records"], max_score=4)
         else:
