@@ -155,7 +155,7 @@ def summarize_personality(records: list[tuple[str, int]], max_score: int = 4) ->
 def run_cli() -> None:
     questions = load_questions()
 
-    print("SPI練習アプリ（JSON版）")
+    print("SPI練習アプリ（CLI）")
     mode = choose_from_list("モードを選択してください", ["非言語", "言語", "性格"])
 
     categories = sorted({q["category"] for q in questions if q.get("mode") == mode})
@@ -169,6 +169,10 @@ def run_cli() -> None:
         raise QuizError("条件に一致する問題がありません。")
 
     print(f"\n該当問題数: {len(pool)}問")
+    print("出題順: Enterでランダム / 2でID順")
+    order_choice = input("番号を選択 > ").strip()
+    is_random_order = order_choice != "2"
+
     default_count = min(20, len(pool))
     raw_count = input(f"何問解きますか？（Enterで{default_count}問） > ").strip()
     if raw_count:
@@ -178,7 +182,7 @@ def run_cli() -> None:
     else:
         count = default_count
 
-    selected = random.sample(pool, k=count)
+    selected = random.sample(pool, k=count) if is_random_order else sorted(pool, key=lambda q: q.get("id", ""))[:count]
     input("\nEnterで開始 > ")
 
     correct = 0
@@ -207,56 +211,77 @@ def run_gui() -> None:
     questions = load_questions()
     root = tk.Tk()
     root.title("SPI練習アプリ")
-    root.geometry("920x700")
+    root.geometry("980x760")
+    root.configure(bg="#f3f7ff")
+
+    style = ttk.Style(root)
+    style.theme_use("clam")
+    style.configure("Card.TFrame", background="#ffffff")
+    style.configure("Header.TLabel", background="#2f5fff", foreground="#ffffff", font=("Arial", 12, "bold"))
+    style.configure("Sub.TLabel", background="#ffffff", foreground="#1f2a44")
+    style.configure("Primary.TButton", font=("Arial", 10, "bold"))
 
     mode_var = tk.StringVar(value="非言語")
     category_var = tk.StringVar(value="すべて")
     difficulty_var = tk.StringVar(value="すべて")
     count_var = tk.StringVar(value="20")
+    random_var = tk.BooleanVar(value=True)
 
-    top = ttk.Frame(root, padding=12)
-    top.pack(fill="x")
+    header = ttk.Frame(root, style="Card.TFrame", padding=12)
+    header.pack(fill="x", padx=14, pady=(14, 8))
+    ttk.Label(header, text="SPI Practice App", style="Header.TLabel", anchor="center", padding=8).pack(fill="x")
+    ttk.Label(header, text="モード・分野・難易度を選んで、アプリ感覚でポチポチ解けます。", style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
 
-    ttk.Label(top, text="モード").grid(row=0, column=0, sticky="w")
-    mode_combo = ttk.Combobox(top, textvariable=mode_var, values=["非言語", "言語", "性格"], state="readonly", width=12)
-    mode_combo.grid(row=0, column=1, padx=6)
+    control = ttk.Frame(root, style="Card.TFrame", padding=12)
+    control.pack(fill="x", padx=14, pady=8)
 
-    ttk.Label(top, text="分野").grid(row=0, column=2, sticky="w")
-    category_combo = ttk.Combobox(top, textvariable=category_var, state="readonly", width=18)
-    category_combo.grid(row=0, column=3, padx=6)
+    ttk.Label(control, text="モード", style="Sub.TLabel").grid(row=0, column=0, sticky="w")
+    mode_combo = ttk.Combobox(control, textvariable=mode_var, values=["非言語", "言語", "性格"], state="readonly", width=12)
+    mode_combo.grid(row=1, column=0, padx=(0, 10), pady=(2, 0), sticky="w")
 
-    ttk.Label(top, text="難易度").grid(row=0, column=4, sticky="w")
-    difficulty_combo = ttk.Combobox(top, textvariable=difficulty_var, state="readonly", width=12)
-    difficulty_combo.grid(row=0, column=5, padx=6)
+    ttk.Label(control, text="分野", style="Sub.TLabel").grid(row=0, column=1, sticky="w")
+    category_combo = ttk.Combobox(control, textvariable=category_var, state="readonly", width=18)
+    category_combo.grid(row=1, column=1, padx=(0, 10), pady=(2, 0), sticky="w")
 
-    ttk.Label(top, text="出題数").grid(row=0, column=6, sticky="w")
-    ttk.Entry(top, textvariable=count_var, width=6).grid(row=0, column=7, padx=6)
+    ttk.Label(control, text="難易度", style="Sub.TLabel").grid(row=0, column=2, sticky="w")
+    difficulty_combo = ttk.Combobox(control, textvariable=difficulty_var, state="readonly", width=12)
+    difficulty_combo.grid(row=1, column=2, padx=(0, 10), pady=(2, 0), sticky="w")
 
-    start_btn = ttk.Button(top, text="開始")
-    start_btn.grid(row=0, column=8, padx=10)
+    ttk.Label(control, text="出題数", style="Sub.TLabel").grid(row=0, column=3, sticky="w")
+    ttk.Entry(control, textvariable=count_var, width=6).grid(row=1, column=3, padx=(0, 10), pady=(2, 0), sticky="w")
 
-    timer_label = ttk.Label(root, text="", font=("Arial", 12, "bold"))
-    timer_label.pack(anchor="e", padx=14)
+    ttk.Checkbutton(control, text="ランダム出題", variable=random_var).grid(row=1, column=4, padx=(0, 10), sticky="w")
+    start_btn = ttk.Button(control, text="開始", style="Primary.TButton")
+    start_btn.grid(row=1, column=5, padx=(4, 0), sticky="e")
 
-    main = ttk.Frame(root, padding=12)
-    main.pack(fill="both", expand=True)
+    info_bar = ttk.Frame(root, style="Card.TFrame", padding=12)
+    info_bar.pack(fill="x", padx=14, pady=(0, 8))
+    progress_var = tk.DoubleVar(value=0)
+    progress = ttk.Progressbar(info_bar, variable=progress_var, maximum=100)
+    progress.pack(fill="x")
+    timer_label = ttk.Label(info_bar, text="", style="Sub.TLabel", font=("Arial", 11, "bold"))
+    timer_label.pack(anchor="e", pady=(6, 0))
 
-    q_title = ttk.Label(main, text="設定を選んで『開始』を押してください", font=("Arial", 12, "bold"))
+    qa_card = ttk.Frame(root, style="Card.TFrame", padding=12)
+    qa_card.pack(fill="both", expand=True, padx=14, pady=(0, 10))
+
+    q_title = ttk.Label(qa_card, text="設定を選んで『開始』を押してください", style="Sub.TLabel", font=("Arial", 12, "bold"))
     q_title.pack(anchor="w")
-    q_prompt = tk.Text(main, height=10, wrap="word", font=("Arial", 11))
+
+    q_prompt = tk.Text(qa_card, height=9, wrap="word", font=("Arial", 11), bg="#f9fbff", relief="flat")
     q_prompt.pack(fill="x", pady=8)
     q_prompt.configure(state="disabled")
 
     choice_var = tk.IntVar(value=-1)
-    choice_frame = ttk.Frame(main)
+    choice_frame = ttk.Frame(qa_card, style="Card.TFrame")
     choice_frame.pack(fill="x")
     choice_buttons: list[ttk.Radiobutton] = []
 
-    feedback = tk.Text(main, height=8, wrap="word", font=("Arial", 10))
+    feedback = tk.Text(qa_card, height=8, wrap="word", font=("Arial", 10), bg="#f8f8f8", relief="flat")
     feedback.pack(fill="both", expand=True, pady=10)
     feedback.configure(state="disabled")
 
-    next_btn = ttk.Button(main, text="回答する")
+    next_btn = ttk.Button(qa_card, text="回答する", style="Primary.TButton")
     next_btn.pack(anchor="e")
 
     state = {
@@ -295,6 +320,10 @@ def run_gui() -> None:
             rb.destroy()
         choice_buttons.clear()
 
+    def refresh_progress() -> None:
+        total = max(len(state["quiz"]), 1)
+        progress_var.set((state["index"] / total) * 100)
+
     def show_question() -> None:
         if state["index"] >= len(state["quiz"]):
             finish_quiz()
@@ -306,6 +335,7 @@ def run_gui() -> None:
         write_prompt(q["prompt"])
         write_feedback("")
         clear_choices()
+        refresh_progress()
 
         for i, c in enumerate(q["choices"]):
             rb = ttk.Radiobutton(choice_frame, text=f"{i + 1}. {c}", value=i, variable=choice_var)
@@ -347,6 +377,7 @@ def run_gui() -> None:
         )
         state["index"] += 1
         next_btn.config(text="次へ")
+        refresh_progress()
 
     def submit_answer() -> None:
         if next_btn.cget("text") == "次へ":
@@ -381,10 +412,12 @@ def run_gui() -> None:
         )
         state["index"] += 1
         next_btn.config(text="次へ")
+        refresh_progress()
 
     def finish_quiz() -> None:
         stop_timer()
         total = len(state["quiz"])
+        progress_var.set(100)
         if state["mode"] == "性格":
             summary = summarize_personality(state["records"], max_score=4)
         else:
@@ -404,16 +437,21 @@ def run_gui() -> None:
             messagebox.showerror("エラー", "条件に一致する問題がありません。")
             return
 
-        if count_var.get().strip() == "":
+        raw = count_var.get().strip()
+        if raw == "":
             count = min(20, len(pool))
-        elif count_var.get().strip().isdigit() and int(count_var.get().strip()) > 0:
-            count = min(int(count_var.get().strip()), len(pool))
+        elif raw.isdigit() and int(raw) > 0:
+            count = min(int(raw), len(pool))
         else:
             messagebox.showerror("エラー", "出題数は1以上の整数で入力してください。")
             return
 
         state["mode"] = mode
-        state["quiz"] = random.sample(pool, k=count)
+        if random_var.get():
+            state["quiz"] = random.sample(pool, k=count)
+        else:
+            state["quiz"] = sorted(pool, key=lambda q: q.get("id", ""))[:count]
+
         state["index"] = 0
         state["correct"] = 0
         state["records"] = []
