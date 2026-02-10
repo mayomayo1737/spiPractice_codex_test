@@ -1,30 +1,65 @@
 #!/usr/bin/env python3
-"""SPI練習アプリ（非言語・言語・性格）。問題はJSON管理。"""
+"""SPIの練習問題を30秒タイマー付きで解くCLIアプリ。"""
 
 from __future__ import annotations
 
-import json
 import random
 import threading
-from collections import defaultdict
-from pathlib import Path
+from dataclasses import dataclass
 
-QUESTION_FILE = Path(__file__).with_name("questions.json")
-TIME_LIMITS = {"非言語": 30, "言語": 40, "性格": None}
+TIME_LIMIT_SECONDS = 30
 
 
-class QuizError(Exception):
-    """クイズ設定時のエラー。"""
+@dataclass(frozen=True)
+class Question:
+    category: str
+    prompt: str
+    choices: list[str]
+    answer_index: int
+    explanation: str
 
 
-def timed_input(prompt: str, timeout: int | None) -> str | None:
-    """指定秒数の入力待ち。timeout=Noneの場合は無制限。"""
-    if timeout is None:
-        try:
-            return input(prompt)
-        except EOFError:
-            return None
+QUESTIONS: list[Question] = [
+    Question(
+        category="推論",
+        prompt="A社の売上は昨年比20%増で240万円でした。昨年の売上はいくら？",
+        choices=["160万円", "180万円", "200万円", "220万円"],
+        answer_index=2,
+        explanation="昨年をxとすると、x×1.2=240。よってx=200。",
+    ),
+    Question(
+        category="割合",
+        prompt="ある商品を定価の25%引きで販売すると3,000円でした。定価はいくら？",
+        choices=["3,600円", "4,000円", "4,200円", "4,500円"],
+        answer_index=1,
+        explanation="25%引きは定価の75%=0.75倍。3000÷0.75=4000。",
+    ),
+    Question(
+        category="損益算",
+        prompt="原価800円の商品に25%の利益を見込んで定価をつけました。定価はいくら？",
+        choices=["900円", "960円", "1,000円", "1,100円"],
+        answer_index=2,
+        explanation="利益25%なので原価の1.25倍。800×1.25=1000。",
+    ),
+    Question(
+        category="集合",
+        prompt="クラス40人中、英語が得意25人・数学が得意20人・両方得意10人。どちらも得意でない人数は？",
+        choices=["3人", "5人", "7人", "10人"],
+        answer_index=1,
+        explanation="少なくともどちらか得意=25+20-10=35人。40-35=5人。",
+    ),
+    Question(
+        category="速さ",
+        prompt="時速60kmで30分進んだ。進んだ距離は？",
+        choices=["15km", "20km", "25km", "30km"],
+        answer_index=3,
+        explanation="30分=0.5時間。距離=速さ×時間=60×0.5=30km。",
+    ),
+]
 
+
+def timed_input(prompt: str, timeout: int) -> str | None:
+    """指定秒数以内の入力を受け付ける。時間切れならNone。"""
     user_input: list[str | None] = [None]
 
     def _read() -> None:
@@ -41,170 +76,56 @@ def timed_input(prompt: str, timeout: int | None) -> str | None:
     return user_input[0]
 
 
-def load_questions() -> list[dict]:
-    data = json.loads(QUESTION_FILE.read_text(encoding="utf-8"))
-    questions = data.get("questions", [])
-    if not questions:
-        raise QuizError("questions.json に問題が見つかりません。")
-    return questions
-
-
-def choose_from_list(title: str, options: list[str], allow_all: bool = False) -> str:
-    """番号入力で選択させる。allow_all=Trueなら0=すべて。"""
-    print(f"\n{title}")
-    if allow_all:
-        print("  0. すべて")
-    for idx, option in enumerate(options, start=1):
-        print(f"  {idx}. {option}")
-
-    while True:
-        raw = input("番号を選択 > ").strip()
-        if not raw.isdigit():
-            print("数字で入力してください。")
-            continue
-
-        number = int(raw)
-        if allow_all and number == 0:
-            return "すべて"
-        if 1 <= number <= len(options):
-            return options[number - 1]
-        print("選択範囲外です。")
-
-
-def filter_questions(
-    questions: list[dict], mode: str, category: str, difficulty: str
-) -> list[dict]:
-    filtered = [q for q in questions if q.get("mode") == mode]
-    if category != "すべて":
-        filtered = [q for q in filtered if q.get("category") == category]
-    if difficulty != "すべて":
-        filtered = [q for q in filtered if q.get("difficulty") == difficulty]
-    return filtered
-
-
-def ask_question(question: dict, index: int, total: int, mode: str) -> tuple[bool | None, int | None]:
-    """1問出題。認知系は正誤、性格は選択スコアを返す。"""
-    print(f"\n--- 問題 {index}/{total} ({question['category']}・{question['difficulty']}) ---")
-    print(question["prompt"])
-    for i, choice in enumerate(question["choices"], start=1):
+def present_question(question: Question, question_number: int) -> bool:
+    print(f"\n--- 問題 {question_number} ({question.category}) ---")
+    print(question.prompt)
+    for i, choice in enumerate(question.choices, start=1):
         print(f"  {i}. {choice}")
 
-    timeout = TIME_LIMITS[mode]
-    if timeout is not None:
-        print(f"\n制限時間は{timeout}秒です。")
-    answer = timed_input("番号で回答してください > ", timeout)
+    print(f"\n制限時間は{TIME_LIMIT_SECONDS}秒です。")
+    answer = timed_input("番号で回答してください > ", TIME_LIMIT_SECONDS)
 
     if answer is None:
-        if mode == "性格":
-            print("入力がありませんでした。次へ進みます。")
-            return None, None
-        print("\n⏰ 時間切れです。")
-        print(f"正解: {question['answer_index'] + 1}. {question['choices'][question['answer_index']]}")
-        print(f"解説:\n{question['explanation']}")
-        return False, None
+        print("\n⏰ 時間切れです！")
+        print(f"正解: {question.answer_index + 1}. {question.choices[question.answer_index]}")
+        print(f"解説: {question.explanation}")
+        return False
 
     if not answer.strip().isdigit():
         print("\n⚠️ 数字で入力してください。")
-        if mode != "性格":
-            print(f"正解: {question['answer_index'] + 1}. {question['choices'][question['answer_index']]}")
-            print(f"解説:\n{question['explanation']}")
-            return False, None
-        return None, None
+        print(f"正解: {question.answer_index + 1}. {question.choices[question.answer_index]}")
+        print(f"解説: {question.explanation}")
+        return False
 
-    selected = int(answer) - 1
-    if selected < 0 or selected >= len(question["choices"]):
-        print("\n⚠️ 選択肢の範囲外です。")
-        if mode != "性格":
-            print(f"正解: {question['answer_index'] + 1}. {question['choices'][question['answer_index']]}")
-            print(f"解説:\n{question['explanation']}")
-            return False, None
-        return None, None
+    selected_index = int(answer) - 1
+    is_correct = selected_index == question.answer_index
 
-    if mode == "性格":
-        score = 4 - selected
-        return None, score
-
-    is_correct = selected == question["answer_index"]
-    print("\n✅ 正解！" if is_correct else "\n❌ 不正解。")
-    print(f"正解: {question['answer_index'] + 1}. {question['choices'][question['answer_index']]}")
-    print(f"解説:\n{question['explanation']}")
-    return is_correct, None
-
-
-def summarize_personality(records: list[tuple[str, int]]) -> None:
-    if not records:
-        print("\n回答データがないため、傾向を表示できません。")
-        return
-
-    grouped: dict[str, list[int]] = defaultdict(list)
-    for trait, score in records:
-        grouped[trait].append(score)
-
-    print("\n=== 性格検査サマリー ===")
-    overall = sum(score for _, score in records) / len(records)
-    for trait, scores in grouped.items():
-        avg = sum(scores) / len(scores)
-        if avg >= 3.4:
-            tendency = "高め"
-        elif avg >= 2.4:
-            tendency = "標準"
-        else:
-            tendency = "低め"
-        print(f"- {trait}: 平均{avg:.2f}/4.00（{tendency}）")
-
-    print(f"総合平均: {overall:.2f}/4.00")
-    print("※この結果は自己傾向の簡易表示であり、適性を断定するものではありません。")
-
-
-def run() -> None:
-    questions = load_questions()
-
-    print("SPI練習アプリ（JSON版）")
-    mode = choose_from_list("モードを選択してください", ["非言語", "言語", "性格"])
-
-    categories = sorted({q["category"] for q in questions if q.get("mode") == mode})
-    category = choose_from_list("出題分野を選択してください", categories, allow_all=True)
-
-    difficulties = sorted({q["difficulty"] for q in questions if q.get("mode") == mode})
-    difficulty = choose_from_list("難易度を選択してください", difficulties, allow_all=True)
-
-    pool = filter_questions(questions, mode, category, difficulty)
-    if not pool:
-        raise QuizError("条件に一致する問題がありません。")
-
-    print(f"\n該当問題数: {len(pool)}問")
-    raw_count = input("何問解きますか？（Enterで全問） > ").strip()
-    if raw_count:
-        if not raw_count.isdigit() or int(raw_count) <= 0:
-            raise QuizError("問題数は1以上の整数で入力してください。")
-        count = min(int(raw_count), len(pool))
+    if is_correct:
+        print("\n✅ 正解！")
     else:
-        count = len(pool)
+        print("\n❌ 不正解。")
 
-    selected = random.sample(pool, k=count)
-    input("\nEnterで開始 > ")
+    print(f"正解: {question.answer_index + 1}. {question.choices[question.answer_index]}")
+    print(f"解説: {question.explanation}")
+    return is_correct
 
-    correct = 0
-    personality_records: list[tuple[str, int]] = []
 
-    for idx, question in enumerate(selected, start=1):
-        is_correct, score = ask_question(question, idx, count, mode)
-        if is_correct:
-            correct += 1
-        if mode == "性格" and score is not None:
-            personality_records.append((question.get("trait", "その他"), score))
+def run_quiz(total_questions: int = 5) -> None:
+    print("SPI練習（30秒タイマー・解説付き）を開始します。")
+    print("Enterでスタート...")
+    input()
+
+    selected = random.sample(QUESTIONS, k=min(total_questions, len(QUESTIONS)))
+    score = 0
+
+    for i, question in enumerate(selected, start=1):
+        if present_question(question, i):
+            score += 1
 
     print("\n====================")
-    if mode == "性格":
-        summarize_personality(personality_records)
-    else:
-        print(f"結果: {count}問中 {correct}問正解")
-        print(f"正答率: {correct / count * 100:.1f}%")
+    print(f"結果: {len(selected)}問中 {score}問正解")
     print("====================")
 
 
 if __name__ == "__main__":
-    try:
-        run()
-    except QuizError as exc:
-        print(f"エラー: {exc}")
+    run_quiz()
